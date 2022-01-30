@@ -1,0 +1,71 @@
+from time import sleep
+import RPi.GPIO as GPIO
+import pigpio
+from read_RPM import reader
+Myslp = 3
+import requests
+from datetime import datetime
+import time
+
+#Run sudo pigpiod in command prompt before you execute this code
+GPIO.setmode(GPIO.BCM)
+
+# Looking at RPI with USB ports at the botton, pin 18 is 6th from the top of the right most array (starts with 5V).
+# Connect the white wire of ESC (digital input) to pin 18. Connect black wire of esc to ground - 3rd pin on top of right most array of pins.
+servoPin = 18
+
+pi = pigpio.pi()
+
+print("set pwm")
+print("plug battery, I am waiting for:",Myslp)
+sleep(Myslp)
+print("ready")
+
+pi.set_servo_pulsewidth(servoPin,1800)
+sleep(2)
+pi.set_servo_pulsewidth(servoPin,1005)
+sleep(2)
+
+RPM_GPIO = 14
+# Looking at RPI with USB ports at the botton, pin 14 is 4th from the top of the right most array (starts with 5V).
+tach = reader(pi, RPM_GPIO)
+
+from shareplum import Site    
+from shareplum import Office365    
+from shareplum.site import Version    
+sharepointUsername = "@prudentia-consulting.com"    
+sharepointPassword = "XYXincludingdoublequotes"    
+sharepointSite = "https://prudentia.sharepoint.com/sites/PowerPlatformView"    
+website = "https://prudentia.sharepoint.com/"    
+authcookie = Office365(website, username=sharepointUsername,    
+password=sharepointPassword).GetCookies()
+site = Site(sharepointSite, version=Version.v2016, authcookie=authcookie)
+
+while True:
+   
+    set_list = site.List('StepperList')
+    PWM = set_list.GetListItems(fields=['Steps'])
+    PWM = float(str(PWM)[11:-4])
+    PWM = int(round(PWM,0))
+    pi.set_servo_pulsewidth(servoPin,PWM)
+    RPMA = int(round(tach.RPM(),0))
+    # RPMT = 2000
+    print("RPM :",RPMA)
+    print("PWM :",PWM)
+    if PWM == 1000:
+        #print ("paused execution")
+        sleep(1)
+   
+    print(PWM)
+       
+    if PWM == 900:
+        #print(speed)
+        GPIO.cleanup()
+        break
+   
+    now = datetime.strftime(datetime.now(),"%Y-%m-%dT%H:%M:%S%Z")
+    data = '[{{"TimeStamp":"{0}","RPMA":"{1}","RPMT":"{2}"}}]'.format(now,RPMA,RPMT)
+    aurl = "This is from Power BI - https://api.powerbi.com/beta/c78f1d30-.....455f-9a81-36d8b957f8b4/datasets/16910b1b-8b2b-430....-418b30a975da/rows?key=K0dugbPSDXTHizPXDu8JL6Hqm6u%2F0rsq8MN%2F5H...G%2B2pZXIFwceMEmaADGw4U9NJHg%3D%3D"
+    req = requests.post(aurl,data)
+    print(data)
+    
