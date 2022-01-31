@@ -1,0 +1,47 @@
+import sys
+import time
+
+from telemetrix_rpi_pico import telemetrix_rpi_pico
+
+# Looking at RPI with USB ports at the botton, pin 18 is 6th from the top of the right most array (starts with 5V).
+# Connect the white wire of ESC (digital input) to pin 18. Connect black wire of esc to ground - 3rd pin on top of right most array of pins.
+servoPin = 16
+
+
+board = telemetrix_rpi_pico.TelemetrixRpiPico()
+
+print("set pwm")
+print("plug battery, I am waiting for:",3)
+time.sleep(3)
+print("ready")
+
+board.set_pin_mode_servo(servoPin, 1000, 2000)
+time.sleep(1)
+    
+from shareplum import Site    
+from shareplum import Office365    
+from shareplum.site import Version    
+sharepointUsername = "@prudentia-consulting.com"    
+sharepointPassword = "YourPassword"    
+sharepointSite = "https://prudentia.sharepoint.com/sites/PowerPlatformView"    
+website = "https://prudentia.sharepoint.com/"    
+authcookie = Office365(website, username=sharepointUsername,    
+password=sharepointPassword).GetCookies()
+site = Site(sharepointSite, version=Version.v2016, authcookie=authcookie)
+
+while True:
+   
+    set_list = site.List('StepperList')
+    PWM = set_list.GetListItems(fields=['Steps'])
+    PWM = float(str(PWM)[11:-4])
+    PWM = int(round(PWM,0))
+    board.servo_write(servoPin,PWM)
+
+    print("PWM :",PWM)
+    if PWM == 1000:
+        time.sleep(1)
+   
+    print(PWM)
+       
+    if PWM == 900:
+        break
